@@ -23,8 +23,24 @@ export class ApiClient {
     });
   };
 
+  authenticateLdap = (
+    username: string,
+    password: string
+  ): Promise<ApiSuccessResponse> => {
+    return this.http.get("auth", {
+      headers: {
+        "X-Pi-hole-Authenticate-username": username,
+        "X-Pi-hole-Authenticate": password
+      }
+    });
+  };
+
   checkAuthStatus = (): Promise<ApiSuccessResponse> => {
     return this.http.get("auth");
+  };
+
+  checkAuthMode = (): Promise<ApiAuthMode> => {
+    return this.http.get("auth/mode");
   };
 
   logout = (): Promise<ApiSuccessResponse> => {

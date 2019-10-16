@@ -65,9 +65,28 @@ describe("ApiClient", () => {
       });
     });
 
+    it("should call ldap login endpoint with auth headers", async () => {
+      const key = "test";
+      const username = "username";
+      await expect(api.authenticateLdap(username, key)).resolves.toEqual(
+        getData
+      );
+      expect(httpClient.get).toHaveBeenCalledWith("auth", {
+        headers: {
+          "X-Pi-hole-Authenticate": key,
+          "X-Pi-hole-Authenticate-username": username
+        }
+      });
+    });
+
     it("should call auth endpoint with no headers", async () => {
       await expect(api.checkAuthStatus()).resolves.toEqual(getData);
       expect(httpClient.get).toHaveBeenCalledWith("auth");
+    });
+
+    it("should call auth mode endpoint with no headers", async () => {
+      await expect(api.checkAuthMode()).resolves.toEqual(getData);
+      expect(httpClient.get).toHaveBeenCalledWith("auth/mode");
     });
 
     it("should call logout endpoint", async () => {

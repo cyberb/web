@@ -25,21 +25,29 @@ export interface LoginProps extends WithTranslation {
 }
 
 export interface LoginState {
+  username: string;
   password: string;
   error: boolean;
   cookiesEnabled: boolean;
+  ldapAuth: boolean;
 }
 
 class Login extends Component<LoginProps, LoginState> {
   state = {
+    username: "",
     password: "",
     error: false,
-    cookiesEnabled: false
+    cookiesEnabled: false,
+    ldapAuth: false
   };
 
   componentWillMount() {
     // Check if cookies are enabled
     if (navigator.cookieEnabled) this.setState({ cookiesEnabled: true });
+
+    api.checkAuthMode().then(auth => {
+      this.setState({ ldapAuth: auth.mode === "ldap" });
+    });
   }
 
   /**
@@ -51,6 +59,10 @@ class Login extends Component<LoginProps, LoginState> {
     this.setState({ password: e.target.value });
   };
 
+  handleUsernameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    this.setState({ username: e.target.value });
+  };
+
   /**
    * Try to authenticate the user
    */
@@ -58,20 +70,26 @@ class Login extends Component<LoginProps, LoginState> {
     // Prevent the page from reloading when the user gets redirected
     e && e.preventDefault();
 
-    // Hash the password twice before sending to the API
-    let hashedPassword = sha("sha256")
-      .update(this.state.password)
-      .digest("hex");
-    hashedPassword = sha("sha256")
-      .update(hashedPassword)
-      .digest("hex");
+    var promise;
+    if (this.state.ldapAuth) {
+      let username = this.state.username;
+      let password = this.state.password;
+      promise = api.authenticateLdap(username, password);
+    } else {
+      // Hash the password twice before sending to the API
+      let hashedPassword = sha("sha256")
+        .update(this.state.password)
+        .digest("hex");
+      hashedPassword = sha("sha256")
+        .update(hashedPassword)
+        .digest("hex");
+      promise = api.authenticate(hashedPassword);
+    }
 
     // Clear the state
     this.setState({ password: "", error: false });
 
-    // Send the password to the API to authenticate the user
-    api
-      .authenticate(hashedPassword)
+    promise
       .then(() => {
         api.loggedIn = true;
 
@@ -147,20 +165,51 @@ class Login extends Component<LoginProps, LoginState> {
 
           <div className="card-body">
             <form id="loginform" onSubmit={this.authenticate}>
-              <div
-                className={
-                  "input-group" + (this.state.error ? " has-error" : "")
-                }
-              >
-                <input
-                  type="password"
-                  className="form-control"
-                  value={this.state.password}
-                  onChange={this.handlePasswordChange}
-                  placeholder={t("Password")}
-                  autoFocus
-                />
-              </div>
+              {this.state.ldapAuth ? (
+                <Fragment>
+                  <div className="input-group">
+                    <input
+                      name="username"
+                      className="form-control"
+                      value={this.state.username}
+                      onChange={this.handleUsernameChange}
+                      placeholder={t("Username")}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div
+                    className={
+                      "input-group" + (this.state.error ? " has-error" : "")
+                    }
+                  >
+                    <input
+                      name="password"
+                      type="password"
+                      className="form-control"
+                      value={this.state.password}
+                      onChange={this.handlePasswordChange}
+                      placeholder={t("Password")}
+                    />
+                  </div>
+                </Fragment>
+              ) : (
+                <div
+                  className={
+                    "input-group" + (this.state.error ? " has-error" : "")
+                  }
+                >
+                  <input
+                    name="password"
+                    type="password"
+                    className="form-control"
+                    value={this.state.password}
+                    onChange={this.handlePasswordChange}
+                    placeholder={t("Password")}
+                    autoFocus
+                  />
+                </div>
+              )}
               <br />
               <button
                 type="submit"

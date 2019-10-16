@@ -203,3 +203,7 @@ interface ApiClientData {
   ip: string;
   count: number;
 }
+
+interface ApiAuthMode {
+  mode: string;
+}
